@@ -1,8 +1,15 @@
 from DbConnector import DbConnector
 from tabulate import tabulate
 import os
-    
+import datetime    
 
+def standardize_date_format(date_str):
+        try:
+            # Try converting from YYYY/MM/DD format
+            return datetime.datetime.strptime(date_str, '%Y/%m/%d %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            # Else, assume it's already in YYYY-MM-DD format
+            return date_str
 
 class ExampleProgram:
 
@@ -38,6 +45,8 @@ class ExampleProgram:
         self.cursor.execute(activityTable)
         self.cursor.execute(trackpointTable)
         self.db_connection.commit()
+
+    
 
     def read_labels(self, user_path):
         labels_path = os.path.join(user_path, "labels.txt")
@@ -102,7 +111,7 @@ class ExampleProgram:
 
     def drop_table(self, table_name):
         print("Dropping table %s..." % table_name)
-        query = "DROP TABLE %s"
+        query = "DROP TABLE IF EXISTS %s"
         self.cursor.execute(query % table_name)
 
     def show_tables(self):
@@ -111,9 +120,13 @@ class ExampleProgram:
         print(tabulate(rows, headers=self.cursor.column_names))
 
     def get_mode_from_labels(self, labels, start_time, end_time):
+        start_time_dt = datetime.datetime.strptime(standardize_date_format(start_time), '%Y-%m-%d %H:%M:%S')
+        end_time_dt = datetime.datetime.strptime(standardize_date_format(end_time), '%Y-%m-%d %H:%M:%S')
         for label in labels:
             label_start_time, label_end_time, mode = label
-            if label_start_time == start_time and label_end_time == end_time:
+            label_start_time_dt = datetime.datetime.strptime(standardize_date_format(label_start_time), '%Y-%m-%d %H:%M:%S')
+            label_end_time_dt = datetime.datetime.strptime(standardize_date_format(label_end_time), '%Y-%m-%d %H:%M:%S')
+            if label_start_time_dt == start_time_dt and label_end_time_dt == end_time_dt:
                 return mode
         return None
 
@@ -123,6 +136,9 @@ def main():
     program = None
     try:
         program = ExampleProgram()
+        program.drop_table(table_name="TrackPoint")
+        program.drop_table(table_name="Activity")
+        program.drop_table(table_name="User")   
         program.create_tables()
         user_id = "020"
         user_path = os.path.join("dataset", "dataset", "Data", user_id)
@@ -135,8 +151,9 @@ def main():
         print("start reading trackpoints")
         for plt_file in plt_files:
             trackpoints = program.read_trackpoints(os.path.join(trajectory_path, plt_file))
-            start_time = trackpoints[0][5] + " " + trackpoints[0][6]
-            end_time = trackpoints[-1][5] + " " + trackpoints[-1][6]
+            start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
+            end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
+
             mode = program.get_mode_from_labels(labels, start_time, end_time)
             
             activity_id = program.insert_activity(user_id, mode, start_time.replace("/", "-"), end_time.replace("/", "-"))
