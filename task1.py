@@ -60,6 +60,8 @@ class ExampleProgram:
     def read_trackpoints(self, trackpoint_path):
         with open(trackpoint_path, 'r') as my_file:
             lines = my_file.readlines()[6:]  
+        if len(lines) > 2500: 
+            return None
         trackpoints = [line.strip().split(',') for line in lines]
         return trackpoints
 
@@ -151,6 +153,10 @@ def main():
         print("start reading trackpoints")
         for plt_file in plt_files:
             trackpoints = program.read_trackpoints(os.path.join(trajectory_path, plt_file))
+
+            if not trackpoints:
+                continue
+
             start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
             end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
 
