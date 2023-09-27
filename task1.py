@@ -46,8 +46,6 @@ class ExampleProgram:
         self.cursor.execute(trackpointTable)
         self.db_connection.commit()
 
-    
-
     def read_labels(self, user_path):
         labels_path = os.path.join(user_path, "labels.txt")
         if not os.path.exists(labels_path):
@@ -60,12 +58,10 @@ class ExampleProgram:
     def read_trackpoints(self, trackpoint_path):
         with open(trackpoint_path, 'r') as my_file:
             lines = my_file.readlines()[6:]  
-        if len(lines) > 2500: 
-            return None
         trackpoints = [line.strip().split(',') for line in lines]
-        return trackpoints
+        return trackpoints[:2500]
 
-    def read_trajectory_files(self, trajectory_path):
+    """ def read_trajectory_files(self, trajectory_path):
         files = [os.path.join(trajectory_path, f) for f in os.listdir(trajectory_path) if f.endswith('.plt')]
         print("file", files)
         all_points = []
@@ -75,7 +71,7 @@ class ExampleProgram:
             with open(some_file, 'r') as f:
                 points = f.readlines()[6:]  
                 all_points.extend([point.strip().split(',') for point in points])
-        return all_points
+        return all_points """
 
     def insert_user(self, user_id, has_labels):
         query = "INSERT INTO User (id, has_labels) VALUES (%s, %s)"
@@ -89,19 +85,11 @@ class ExampleProgram:
         self.db_connection.commit()
         return self.cursor.lastrowid  
 
-    def insert_trackpoints(self, activity_id, trackpoints):
-        query = """INSERT INTO TrackPoint (activity_id, lat, lon, altitude, date_days, date_time) 
-                    VALUES (%s, %s, %s, %s, %s, %s)"""
-        self.cursor.executemany(query, trackpoints)
-        self.db_connection.commit()
-
     def insert_trackpoints_batch(self, trackpoint_data):
         query = """INSERT INTO TrackPoint (activity_id, lat, lon, altitude, date_days, date_time) 
                     VALUES (%s, %s, %s, %s, %s, %s)"""
         self.cursor.executemany(query, trackpoint_data)
         self.db_connection.commit()
-
-
 
     def fetch_data(self, table_name):
         query = "SELECT * FROM %s"
@@ -121,7 +109,7 @@ class ExampleProgram:
         rows = self.cursor.fetchall()
         print(tabulate(rows, headers=self.cursor.column_names))
 
-    def get_mode_from_labels(self, labels, start_time, end_time):
+    def get_type_from_labels(self, labels, start_time, end_time):
         start_time_dt = datetime.datetime.strptime(standardize_date_format(start_time), '%Y-%m-%d %H:%M:%S')
         end_time_dt = datetime.datetime.strptime(standardize_date_format(end_time), '%Y-%m-%d %H:%M:%S')
         for label in labels:
@@ -134,7 +122,6 @@ class ExampleProgram:
 
 
 def main():
-    BATCH_SIZE = 10000 
     program = None
     try:
         program = ExampleProgram()
@@ -142,39 +129,44 @@ def main():
         program.drop_table(table_name="Activity")
         program.drop_table(table_name="User")   
         program.create_tables()
-        user_id = "020"
-        user_path = os.path.join("dataset", "dataset", "Data", user_id)
-        labels = program.read_labels(user_path)
-        has_labels = len(labels) > 0
-        program.insert_user(user_id, has_labels)
 
-        trajectory_path = os.path.join(user_path, "Trajectory")
-        plt_files = [some_file for some_file in os.listdir(trajectory_path) if some_file.endswith('.plt')]
-        print("start reading trackpoints")
-        for plt_file in plt_files:
-            trackpoints = program.read_trackpoints(os.path.join(trajectory_path, plt_file))
+        users_path = os.path.join("dataset", "dataset", "Data")
 
-            if not trackpoints:
-                continue
+        users = [some_file for some_file in os.listdir(users_path) if os.path.isdir(os.path.join(users_path, some_file))]
 
-            start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
-            end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
+        for user in users:
+            user_path = os.path.join("dataset", "dataset", "Data", user)
+            labels = program.read_labels(user_path)
+            has_labels = len(labels) > 0
+            program.insert_user(user, has_labels)
 
-            mode = program.get_mode_from_labels(labels, start_time, end_time)
-            
-            activity_id = program.insert_activity(user_id, mode, start_time.replace("/", "-"), end_time.replace("/", "-"))
-            
-            # Use batch insert for trackpoints
-            trackpoint_data = [(activity_id, point[0], point[1], 0, point[4], f"{point[5]} {point[6]}") for point in trackpoints]
-            program.insert_trackpoints_batch(trackpoint_data)
+            trajectory_path = os.path.join(user_path, "Trajectory")
+            plt_files = [some_file for some_file in os.listdir(trajectory_path) if some_file.endswith('.plt')]
+            print("start reading trackpoints for user: ", user)
+            for plt_file in plt_files:
+                trackpoints = program.read_trackpoints(os.path.join(trajectory_path, plt_file))
+
+                if not trackpoints:
+                    continue
+
+                start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
+                end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
+
+                mode = program.get_type_from_labels(labels, start_time, end_time)
+                
+                activity_id = program.insert_activity(user, mode, start_time.replace("/", "-"), end_time.replace("/", "-"))
+                
+                # Use batch insert for trackpoints
+                trackpoint_data = [(activity_id, point[0], point[1], 0, point[4], f"{point[5]} {point[6]}") for point in trackpoints]
+                program.insert_trackpoints_batch(trackpoint_data)
         print("finished reading trackpoints")
         program.show_tables()
         program.fetch_data("User") 
         program.fetch_data("Activity")
 
-        program.drop_table(table_name="TrackPoint")
+        """ program.drop_table(table_name="TrackPoint")
         program.drop_table(table_name="Activity")
-        program.drop_table(table_name="User")    
+        program.drop_table(table_name="User")   """  
     except Exception as e:
         print("ERROR: Failed to use database:", e)
     finally:
