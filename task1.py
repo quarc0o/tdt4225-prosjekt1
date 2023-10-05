@@ -3,13 +3,13 @@ from tabulate import tabulate
 import os
 import datetime    
 
-def standardize_date_format(date_str):
+""" def standardize_date_format(date_str):
         try:
             # Try converting from YYYY/MM/DD format
             return datetime.datetime.strptime(date_str, '%Y/%m/%d %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
         except ValueError:
             # Else, assume it's already in YYYY-MM-DD format
-            return date_str
+            return date_str """
 
 class ExampleProgram:
 
@@ -113,13 +113,10 @@ class ExampleProgram:
         print(tabulate(rows, headers=self.cursor.column_names))
 
     def get_type_from_labels(self, labels, start_time, end_time):
-        #start_time_dt = datetime.datetime.strptime(standardize_date_format(start_time), '%Y-%m-%d %H:%M:%S')
-        #end_time_dt = datetime.datetime.strptime(standardize_date_format(end_time), '%Y-%m-%d %H:%M:%S')
         for label in labels:
             label_start_time, label_end_time, mode = label
-            #label_start_time_dt = datetime.datetime.strptime(standardize_date_format(label_start_time), '%Y-%m-%d %H:%M:%S')
-            #label_end_time_dt = datetime.datetime.strptime(standardize_date_format(label_end_time), '%Y-%m-%d %H:%M:%S')
-            if label_start_time == start_time and label_end_time == end_time:
+            if label_start_time.replace("/", "-") == start_time and label_end_time.replace("/", "-") == end_time:
+                print("mode: ", mode)
                 return mode
         return None
 
@@ -138,7 +135,7 @@ def main():
 
         users_path = os.path.join("dataset", "dataset", "Data")
         users = [some_file for some_file in os.listdir(users_path) if os.path.isdir(os.path.join(users_path, some_file))]
-        users = users[:10]
+        users = users[:20]
 
         
         for user in users:
@@ -159,13 +156,13 @@ def main():
                     continue
 
                 mode = None
-                start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
-                end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
+                start_time = (trackpoints[0][5] + " " + trackpoints[0][6])
+                end_time = (trackpoints[-1][5] + " " + trackpoints[-1][6])
             
                 if (has_labels):                    
                     mode = program.get_type_from_labels(labels, start_time, end_time)
                 
-                activity_id = program.insert_activity(user, mode, start_time.replace("/", "-"), end_time.replace("/", "-"))
+                activity_id = program.insert_activity(user, mode, start_time, end_time)
                 
                 # Use batch insert for trackpoints
                 trackpoint_data = [(activity_id, point[0], point[1], 0, point[4], f"{point[5]} {point[6]}") for point in trackpoints]
