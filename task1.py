@@ -55,12 +55,6 @@ class ExampleProgram:
         activities = [line.strip().split('\t') for line in lines]
         return activities
     
-    def read_labeled_ids(self, labeled_ids_path):
-        with open(labeled_ids_path, 'r') as my_file:
-            lines = my_file.readlines()  
-        ids = [line.strip() for line in lines]
-        return ids
-    
     def read_trackpoints(self, trackpoint_path):
         with open(trackpoint_path, 'r') as my_file:
             lines = my_file.readlines()[6:]  
@@ -123,10 +117,8 @@ def main():
         program.create_tables()
 
         users_path = os.path.join("dataset", "dataset", "Data")
-        labaled_ids_path = os.path.join("dataset", "dataset", "labeled_ids.txt")
         users = [some_file for some_file in os.listdir(users_path) if os.path.isdir(os.path.join(users_path, some_file))]
         users = users[:10]
-        ids_with_mode = program.read_labeled_ids(labaled_ids_path)
         for user in users:
             user_path = os.path.join("dataset", "dataset", "Data", user)
             labels = program.read_labels(user_path)
