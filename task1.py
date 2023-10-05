@@ -55,6 +55,12 @@ class ExampleProgram:
         activities = [line.strip().split('\t') for line in lines]
         return activities
     
+    def read_labeled_ids(self, labeled_ids_path):
+        with open(labeled_ids_path, 'r') as my_file:
+            lines = my_file.readlines()  
+        ids = [line.strip() for line in lines]
+        return ids
+    
     def read_trackpoints(self, trackpoint_path):
         with open(trackpoint_path, 'r') as my_file:
             lines = my_file.readlines()[6:]  
@@ -98,13 +104,13 @@ class ExampleProgram:
         print(tabulate(rows, headers=self.cursor.column_names))
 
     def get_type_from_labels(self, labels, start_time, end_time):
-        start_time_dt = datetime.datetime.strptime(standardize_date_format(start_time), '%Y-%m-%d %H:%M:%S')
-        end_time_dt = datetime.datetime.strptime(standardize_date_format(end_time), '%Y-%m-%d %H:%M:%S')
+        #start_time_dt = datetime.datetime.strptime(standardize_date_format(start_time), '%Y-%m-%d %H:%M:%S')
+        #end_time_dt = datetime.datetime.strptime(standardize_date_format(end_time), '%Y-%m-%d %H:%M:%S')
         for label in labels:
             label_start_time, label_end_time, mode = label
-            label_start_time_dt = datetime.datetime.strptime(standardize_date_format(label_start_time), '%Y-%m-%d %H:%M:%S')
-            label_end_time_dt = datetime.datetime.strptime(standardize_date_format(label_end_time), '%Y-%m-%d %H:%M:%S')
-            if label_start_time_dt == start_time_dt and label_end_time_dt == end_time_dt:
+            #label_start_time_dt = datetime.datetime.strptime(standardize_date_format(label_start_time), '%Y-%m-%d %H:%M:%S')
+            #label_end_time_dt = datetime.datetime.strptime(standardize_date_format(label_end_time), '%Y-%m-%d %H:%M:%S')
+            if label_start_time == start_time and label_end_time == end_time:
                 return mode
         return None
 
@@ -119,9 +125,10 @@ def main():
         program.create_tables()
 
         users_path = os.path.join("dataset", "dataset", "Data")
-
+        labaled_ids_path = os.path.join("dataset", "dataset", "labeled_ids.txt")
         users = [some_file for some_file in os.listdir(users_path) if os.path.isdir(os.path.join(users_path, some_file))]
-
+        users = users[:10]
+        ids_with_mode = program.read_labeled_ids(labaled_ids_path)
         for user in users:
             user_path = os.path.join("dataset", "dataset", "Data", user)
             labels = program.read_labels(user_path)
@@ -136,11 +143,12 @@ def main():
 
                 if not trackpoints:
                     continue
-
-                start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
-                end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
-
-                mode = program.get_type_from_labels(labels, start_time, end_time)
+            
+                if (has_labels):
+                    print("has labels")
+                    start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
+                    end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
+                    mode = program.get_type_from_labels(labels, start_time, end_time)
                 
                 activity_id = program.insert_activity(user, mode, start_time.replace("/", "-"), end_time.replace("/", "-"))
                 
@@ -148,13 +156,7 @@ def main():
                 trackpoint_data = [(activity_id, point[0], point[1], 0, point[4], f"{point[5]} {point[6]}") for point in trackpoints]
                 program.insert_trackpoints_batch(trackpoint_data)
         print("finished reading trackpoints")
-        program.show_tables()
-        program.fetch_data("User") 
-        program.fetch_data("Activity")
 
-        """ program.drop_table(table_name="TrackPoint")
-        program.drop_table(table_name="Activity")
-        program.drop_table(table_name="User")   """  
     except Exception as e:
         print("ERROR: Failed to use database:", e)
     finally:
