@@ -23,17 +23,19 @@ class ExampleProgram:
     
     def get_trackpoint(self):
         query = """
-        SELECT TrackPoint.id, TrackPoint.lat, TrackPoint.lon, Activity.user_id
+        SELECT TrackPoint.id, TrackPoint.lat, TrackPoint.lon, Activity.user_id, TrackPoint.date_days, TrackPoint.date_time
         FROM TrackPoint
         JOIN Activity ON TrackPoint.activity_id = Activity.id
-        LIMIT 500
+        LIMIT 30000
         """
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
         lon = [row[2] for row in rows]
         lat = [row[1] for row in rows]
         user_ids = [row[3] for row in rows]
-        return lon, lat, user_ids
+        date_days = [row[4] for row in rows]
+        date_time = [row[5] for row in rows] 
+        return lon, lat, user_ids, date_days, date_time
 
 
 
@@ -66,25 +68,34 @@ class ExampleProgram:
             return None
 
 
-
 def main():
     start_time = time.time()
     program = None
     try:
         program = ExampleProgram()
         some_trackpoints = program.get_trackpoint()
-        lon = some_trackpoints[0]
-        lat = some_trackpoints[1]
-        user_id = some_trackpoints[2]
+        lon, lat, user_id, date_days, date_time = some_trackpoints
         count = 0
-        for some_lon, some_lat, some_user in zip(lon, lat, user_id):
-            count += 1
-            #print("comparing: ", some_lon, some_lat)
-            df = pandas.DataFrame(data={'lon1':lon,'lon2':some_lon,'lat1':lat,'lat2':some_lat})
-            km = program.haversine_np(df['lon1'],df['lat1'],df['lon2'],df['lat2'])
-        print("Finished comparing ", count, " trackpoints")
+        track_count = 0
         
-    
+        for i, (lon1, lat1, user1, time1) in enumerate(zip(lon, lat, user_id, date_time)):
+            track_count += 1
+            for j, (lon2, lat2, user2, time2) in enumerate(zip(lon, lat, user_id, date_time)):
+                # Check if the trackpoints are not from the same user
+                if user1 != user2:
+                    # Check if timestamps are within 30 minutes of each other
+                    time_diff = abs((time1 - time2).total_seconds())
+                    if time_diff <= 1800:  # 30 minutes = 1800 seconds
+                        # Calculate the distance between the two points
+                        km = program.haversine_np(lon1, lat1, lon2, lat2)
+                        # Check if the distance is less than 0.1 km
+                        if km < 0.1:
+                            count += 1
+                            print(f"Trackpoint {i} ({lon1}, {lat1}, User: {user1}, Time: {time1}) is close to "
+                                  f"Trackpoint {j} ({lon2}, {lat2}, User: {user2}, Time: {time2}) with distance {km:.5f} km")
+        
+        print("Finished comparing", track_count, "trackpoints. Found", count, "trackpoint pairs closer than 0.1 km, within 30 minutes, and not from the same user.")
+        
     except Exception as e:
         print("ERROR: Failed to use database:", e)
     finally:
