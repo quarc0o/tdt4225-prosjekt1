@@ -127,12 +127,13 @@ def main():
         users_path = os.path.join("dataset", "dataset", "Data")
         labaled_ids_path = os.path.join("dataset", "dataset", "labeled_ids.txt")
         users = [some_file for some_file in os.listdir(users_path) if os.path.isdir(os.path.join(users_path, some_file))]
-        users = users[:10]
+        users = users[:3]
         ids_with_mode = program.read_labeled_ids(labaled_ids_path)
         for user in users:
             user_path = os.path.join("dataset", "dataset", "Data", user)
             labels = program.read_labels(user_path)
             has_labels = len(labels) > 0
+            print(has_labels)
             program.insert_user(user, has_labels)
 
             trajectory_path = os.path.join(user_path, "Trajectory")
@@ -143,11 +144,12 @@ def main():
 
                 if not trackpoints:
                     continue
+
+                mode = None
+                start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
+                end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
             
-                if (has_labels):
-                    print("has labels")
-                    start_time = standardize_date_format(trackpoints[0][5] + " " + trackpoints[0][6])
-                    end_time = standardize_date_format(trackpoints[-1][5] + " " + trackpoints[-1][6])
+                if (has_labels):                    
                     mode = program.get_type_from_labels(labels, start_time, end_time)
                 
                 activity_id = program.insert_activity(user, mode, start_time.replace("/", "-"), end_time.replace("/", "-"))
