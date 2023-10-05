@@ -55,11 +55,28 @@ class ExampleProgram:
         activities = [line.strip().split('\t') for line in lines]
         return activities
     
+    def read_labeled_ids(self, labeled_ids_path):
+        with open(labeled_ids_path, 'r') as my_file:
+            lines = my_file.readlines()  
+        ids = [line.strip() for line in lines]
+        return ids
+
     def read_trackpoints(self, trackpoint_path):
+        trackpoints = []
         with open(trackpoint_path, 'r') as my_file:
-            lines = my_file.readlines()[6:]  
-        trackpoints = [line.strip().split(',') for line in lines]
-        return trackpoints[:2500]
+            # Skip first 6 lines
+            for _ in range(6):
+                next(my_file)
+
+            # Read up to 2500 trackpoints
+            for _ in range(2500):
+                line = my_file.readline().strip()
+                if not line:
+                    break  # Stop if there is no more data
+                trackpoints.append(line.split(','))
+
+        return trackpoints
+
 
     def insert_user(self, user_id, has_labels):
         query = "INSERT INTO User (id, has_labels) VALUES (%s, %s)"
@@ -116,14 +133,20 @@ def main():
         program.drop_table(table_name="User")   
         program.create_tables()
 
+        labeled_ids_path = os.path.join("dataset", "dataset", "labeled_ids.txt")
+        ids = program.read_labeled_ids(labeled_ids_path)
+
         users_path = os.path.join("dataset", "dataset", "Data")
         users = [some_file for some_file in os.listdir(users_path) if os.path.isdir(os.path.join(users_path, some_file))]
         users = users[:10]
+
+        
         for user in users:
             user_path = os.path.join("dataset", "dataset", "Data", user)
-            labels = program.read_labels(user_path)
+            labels = []
+            if user in ids:
+                labels = program.read_labels(user_path)
             has_labels = len(labels) > 0
-            print(has_labels)
             program.insert_user(user, has_labels)
 
             trajectory_path = os.path.join(user_path, "Trajectory")
