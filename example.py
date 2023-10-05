@@ -14,7 +14,6 @@ class ExampleProgram:
                    id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
                    name VARCHAR(30))
                 """
-        # This adds table_name to the %s variable and executes the query
         self.cursor.execute(query % table_name)
         self.db_connection.commit()
 

@@ -61,18 +61,6 @@ class ExampleProgram:
         trackpoints = [line.strip().split(',') for line in lines]
         return trackpoints[:2500]
 
-    """ def read_trajectory_files(self, trajectory_path):
-        files = [os.path.join(trajectory_path, f) for f in os.listdir(trajectory_path) if f.endswith('.plt')]
-        print("file", files)
-        all_points = []
-        for some_file in files:
-            full_path = os.path.join(trajectory_path, some_file)
-            print("Full path to plt file:", full_path)
-            with open(some_file, 'r') as f:
-                points = f.readlines()[6:]  
-                all_points.extend([point.strip().split(',') for point in points])
-        return all_points """
-
     def insert_user(self, user_id, has_labels):
         query = "INSERT INTO User (id, has_labels) VALUES (%s, %s)"
         self.cursor.execute(query, (user_id, has_labels))
