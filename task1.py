@@ -70,20 +70,18 @@ class ExampleProgram:
     def insert_user(self, user_id, has_labels):
         query = "INSERT INTO User (id, has_labels) VALUES (%s, %s)"
         self.cursor.execute(query, (user_id, has_labels))
-        self.db_connection.commit()
 
     def insert_activity(self, user_id, mode, start_time, end_time):
         query = """INSERT INTO Activity (user_id, transportation_mode, start_date_time, end_date_time) 
                 VALUES (%s, %s, %s, %s)"""
         self.cursor.execute(query, (user_id, mode, start_time, end_time))
-        self.db_connection.commit()
         return self.cursor.lastrowid  
 
     def insert_trackpoints_batch(self, trackpoint_data):
         query = """INSERT INTO TrackPoint (activity_id, lat, lon, altitude, date_days, date_time) 
                     VALUES (%s, %s, %s, %s, %s, %s)"""
         self.cursor.executemany(query, trackpoint_data)
-        self.db_connection.commit()
+        
 
     def fetch_data(self, table_name):
         query = "SELECT * FROM %s"
@@ -127,7 +125,7 @@ def main():
         users_path = os.path.join("dataset", "dataset", "Data")
         labaled_ids_path = os.path.join("dataset", "dataset", "labeled_ids.txt")
         users = [some_file for some_file in os.listdir(users_path) if os.path.isdir(os.path.join(users_path, some_file))]
-        users = users[:3]
+        users = users[:10]
         ids_with_mode = program.read_labeled_ids(labaled_ids_path)
         for user in users:
             user_path = os.path.join("dataset", "dataset", "Data", user)
@@ -158,6 +156,7 @@ def main():
                 trackpoint_data = [(activity_id, point[0], point[1], 0, point[4], f"{point[5]} {point[6]}") for point in trackpoints]
                 program.insert_trackpoints_batch(trackpoint_data)
         print("finished reading trackpoints")
+        program.db_connection.commit()
 
     except Exception as e:
         print("ERROR: Failed to use database:", e)
