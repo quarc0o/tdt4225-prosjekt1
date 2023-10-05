@@ -116,7 +116,6 @@ class ExampleProgram:
         for label in labels:
             label_start_time, label_end_time, mode = label
             if label_start_time.replace("/", "-") == start_time and label_end_time.replace("/", "-") == end_time:
-                print("mode: ", mode)
                 return mode
         return None
 
@@ -124,6 +123,7 @@ class ExampleProgram:
 def main():
     program = None
     try:
+        start_time = datetime.datetime.now()
         program = ExampleProgram()
         program.drop_table(table_name="TrackPoint")
         program.drop_table(table_name="Activity")
@@ -135,8 +135,6 @@ def main():
 
         users_path = os.path.join("dataset", "dataset", "Data")
         users = [some_file for some_file in os.listdir(users_path) if os.path.isdir(os.path.join(users_path, some_file))]
-        users = users[:20]
-
         
         for user in users:
             user_path = os.path.join("dataset", "dataset", "Data", user)
@@ -169,6 +167,7 @@ def main():
                 program.insert_trackpoints_batch(trackpoint_data)
         print("finished reading trackpoints")
         program.db_connection.commit()
+
 
     except Exception as e:
         print("ERROR: Failed to use database:", e)
