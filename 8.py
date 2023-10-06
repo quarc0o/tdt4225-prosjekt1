@@ -27,16 +27,11 @@ class ExampleProgram:
         FROM TrackPoint
         JOIN Activity ON TrackPoint.activity_id = Activity.id
         ORDER BY TrackPoint.lat
-        LIMIT 5000;
+        LIMIT 800000;
         """
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
-        lon = [row[2] for row in rows]
-        lat = [row[1] for row in rows]
-        user_ids = [row[3] for row in rows]
-        date_days = [row[4] for row in rows]
-        date_time = [row[5] for row in rows] 
-        return lon, lat, user_ids, date_days, date_time
+        return rows
 
 
 
@@ -75,9 +70,40 @@ def main():
     try:
         program = ExampleProgram()
         some_trackpoints = program.get_trackpoint()
-        for trackpoint in some_trackpoints:
-            print(trackpoint)
-            print("\n")
+        prev_user_id = None
+        close_points = [] 
+
+        close_users = set()
+
+        for index, trackpoint in enumerate(some_trackpoints):
+            current_id, current_lat, current_lon, current_user, current_date_days, current_date_time = trackpoint
+            if current_user == prev_user_id:
+                continue
+            print(f"Checking User: {current_user}, Point ID: {current_id}, DateTime: {current_date_time}")
+            prev_user_id = current_user
+            for another_trackpoint in some_trackpoints[index:]:
+                temp_id, temp_lat, temp_lon, temp_user, temp_date_days, temp_date_time = another_trackpoint
+                if current_user == temp_user:
+                    continue
+
+                user_pair = frozenset([current_user, temp_user])
+                if user_pair in close_users:
+                    continue
+                distance = program.haversine_np(current_lon, current_lat, temp_lon, temp_lat)
+                if distance > 0.05:
+                    break
+                time_difference = abs((current_date_time - temp_date_time).total_seconds())
+            
+                if time_difference <= 30:
+                    print("Users {} and {} are close in time with a difference of {} seconds".format(current_user, temp_user, time_difference))
+                
+                    # Add the trackpoints to the list
+                    close_points.append((trackpoint, another_trackpoint))
+                    
+                    # Add the user pair to the set of close users so we skip them in subsequent comparisons
+                    close_users.add(user_pair)
+
+        print("close users: ", close_users)
         
     except Exception as e:
         print("ERROR: Failed to use database:", e)
