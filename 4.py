@@ -2,7 +2,7 @@
 SELECT DISTINCT
     Activity.user_id
 FROM 
-    test_db.Activity
+    Activity
 WHERE 
     Activity.transportation_mode = 'bus';
 """
